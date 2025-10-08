@@ -1,0 +1,105 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from google.colab import files
+from io import BytesIO
+
+def load_data():
+    """
+    Load Excel file from user upload.
+    Expected columns: Date, Cable, Wavelength, RatioToLargest
+    """
+    print("Please upload your Excel file (must contain: 'Date', 'Cable', 'Wavelength', 'RatioToLargest')...")
+    
+    # 1. Prompt user for upload
+    uploaded = files.upload()
+    
+    if not uploaded:
+        print("No file uploaded.")
+        return None, None
+        
+    file_name = list(uploaded.keys())[0]
+    
+    print(f"Loaded file: {file_name}")
+
+    # 2. Read the Excel file using BytesIO (best practice for Colab upload)
+    try:
+        # Use pd.read_excel, as you confirmed it is an Excel file
+        df = pd.read_excel(BytesIO(uploaded[file_name]))
+            
+        print(f"Data shape: {df.shape}")
+        print(f"Columns: {df.columns.tolist()}")
+        return df, file_name
+    except Exception as e:
+        print(f"Error reading Excel file: {e}")
+        return None, None
+
+
+def create_heatmap_analysis(df, output_name="cable_performance_heatmap.png"):
+    """
+    Create heatmap showing cable performance across wavelengths
+    """
+    # Create pivot table for heatmap: Mean RatioToLargest for each Wavelength/Cable combination
+    pivot_data = df.groupby(['Wavelength', 'Cable'])['RatioToLargest'].mean().unstack(fill_value=0)
+
+    # Set up figure size dynamically
+    fig_height = max(6, len(pivot_data) * 0.3)
+    plt.figure(figsize=(7, fig_height))
+
+    sns.heatmap(pivot_data, annot=True, cmap='magma', center=0.5,
+                fmt='.2f', cbar_kws={'label': 'Average Intensity Ratio to Largest'})
+    plt.title('Heat Map of Normalized Intensity for Round Fiber Splitter')
+    plt.ylabel('Wavelength (nm)')
+    plt.xlabel('Cable number')
+    plt.tight_layout()
+
+    # Save the figure
+    plt.savefig(output_name, dpi=200)
+    print(f"\nHeatmap saved as {output_name}")
+    files.download(output_name) # Automatically downloads the image
+
+def main():
+    """
+    Main function to create heatmap visualization
+    """
+    print("Cable Performance Heatmap Generator (Excel Upload)")
+    print("="*60)
+
+    # Load data by prompting user upload
+    df, file_name = load_data()
+
+    if df is None:
+        return
+
+    # Verify expected columns
+    required_cols = ['Cable', 'Wavelength', 'RatioToLargest']
+    missing_cols = [col for col in required_cols if col not in df.columns]
+
+    if missing_cols:
+        print(f"\nMissing required columns: {missing_cols}")
+        print("Please ensure your file has columns: Date, Cable, Wavelength, RatioToLargest.")
+        return
+
+    # Data Type Conversion and Cleaning
+    df["Cable"] = pd.to_numeric(df["Cable"], errors="coerce").astype('Int64')
+    df["Wavelength"] = pd.to_numeric(df["Wavelength"], errors="coerce").astype('Int64')
+    df["RatioToLargest"] = pd.to_numeric(df["RatioToLargest"], errors="coerce")
+    df = df.dropna(subset=required_cols)
+
+    # Print Summary
+    print(f"\nDataset summary:")
+    print(f"- {len(df)} total measurements")
+    unique_cables = sorted(df['Cable'].unique().tolist())
+    unique_wvs = sorted(df['Wavelength'].unique().tolist())
+    print(f"- {len(unique_cables)} cables: {unique_cables}")
+    print(f"- {len(unique_wvs)} wavelengths: {unique_wvs}")
+
+    # Create heatmap
+    print("\nCreating heatmap...")
+    create_heatmap_analysis(df)
+
+    print("Heatmap complete! The image file should now be downloaded.")
+
+# Run the analysis
+if __name__ == "__main__":
+    main()
