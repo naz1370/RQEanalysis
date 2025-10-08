@@ -1,0 +1,6 @@
+##How To Run:
+1.  Go to Google Colab and create a notebook.
+2.  Paste the entire content of the desired script.
+3.  Upload your Excel file.
+4.  The script will display a visualization or download a PNG file.
+5. The Excel file should contain these information: Date |	Cable	| Wavelength |	RatioToLargest	
